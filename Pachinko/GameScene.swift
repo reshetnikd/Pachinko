@@ -13,6 +13,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var scoreLabel: SKLabelNode!
     var editLabel: SKLabelNode!
+    var ballsLimit = 5
+    let ballColors = ["ballBlue", "ballYellow", "ballPurple", "ballGrey", "ballRed", "ballCyan", "ballGreen"]
     
     var score = 0 {
         didSet {
@@ -24,6 +26,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         didSet {
             if editingMode {
                 editLabel.text = "Done"
+                ballsLimit = 5
             } else {
                 editLabel.text = "Edit"
             }
@@ -72,16 +75,36 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 editingMode.toggle()
             } else {
                 if editingMode {
-                    let ball = SKSpriteNode(imageNamed: "ballRed")
-                    ball.name = "ball"
-                    ball.physicsBody = SKPhysicsBody(circleOfRadius: ball.size.width / 2.0)
-                    ball.physicsBody!.contactTestBitMask = ball.physicsBody!.collisionBitMask
-                    ball.physicsBody?.restitution = 0.4
-                    ball.position = location
-                    addChild(ball)
+                    if ballsLimit > 0 {
+                        let ball = SKSpriteNode(imageNamed: ballColors.randomElement()!)
+                        ball.name = "ball"
+                        ball.physicsBody = SKPhysicsBody(circleOfRadius: ball.size.width / 2.0)
+                        ball.physicsBody!.contactTestBitMask = ball.physicsBody!.collisionBitMask
+                        ball.physicsBody?.restitution = 0.4
+                        ball.position = CGPoint(x: location.x, y: self.frame.size.height)
+                        addChild(ball)
+                        ballsLimit -= 1
+                        if !self.children.contains(where: { (node) -> Bool in
+                            node.name == "box"
+                        }) {
+                            let ac = UIAlertController(title: "Win!", message: "You win!", preferredStyle: .alert)
+                            ac.addAction(UIAlertAction(title: "OK", style: .default))
+                            self.view?.window?.rootViewController?.present(ac, animated: true, completion: nil)
+                        }
+                    } else {
+                        if self.children.contains(where: { (node) -> Bool in
+                            node.name == "box"
+                        }) {
+                            let ac = UIAlertController(title: "Lose!", message: "You lose!", preferredStyle: .alert)
+                            ac.addAction(UIAlertAction(title: "OK", style: .default))
+                            self.view?.window?.rootViewController?.present(ac, animated: true, completion: nil)
+                        }
+                        return
+                    }
                 } else {
                     let size = CGSize(width: Int.random(in: 16...128), height: 16)
                     let box = SKSpriteNode(color: UIColor(red: CGFloat.random(in: 0...1), green: CGFloat.random(in: 0...1), blue: CGFloat.random(in: 0...1), alpha: 1), size: size)
+                    box.name = "box"
                     box.zRotation = CGFloat.random(in: 0...3)
                     box.position = location
                     
@@ -133,10 +156,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func collisionBetween(ball: SKNode, object: SKNode) {
         if object.name == "good" {
             destroy(ball: ball)
-            score += 1
+            ballsLimit += 1
         } else if object.name == "bad" {
             destroy(ball: ball)
-            score -= 1
         }
     }
     
@@ -157,6 +179,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             collisionBetween(ball: nodeA, object: nodeB)
         } else if nodeB.name == "ball" {
             collisionBetween(ball: nodeB, object: nodeA)
+        }
+        
+        if nodeA.name == "box" {
+            nodeA.removeFromParent()
+            score += 1
+        } else if nodeB.name == "box" {
+            nodeB.removeFromParent()
+            score += 1
         }
     }
 }
